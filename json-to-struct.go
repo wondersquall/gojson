@@ -110,6 +110,7 @@ import (
 	"unicode"
 
 	"gopkg.in/yaml.v2"
+	"github.com/groob/plist"
 )
 
 var ForceFloats bool
@@ -187,6 +188,19 @@ func ParseYaml(input io.Reader) (interface{}, error) {
 	}
 	return result, nil
 }
+
+func ParsePlist(input io.Reader) (interface{}, error) {
+	var result interface{}
+	b, err := readFile(input)
+	if err != nil {
+		return nil, err
+	}
+	if err := plist.Unmarshal(b, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 
 func readFile(input io.Reader) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
@@ -487,11 +501,15 @@ func typeForValue(value interface{}, structName string, tags []string, subStruct
 		return generateTypes(object, structName, tags, 0, subStructMap, convertFloats) + "}"
 	} else if reflect.TypeOf(value) == nil {
 		return "interface{}"
+	}else if reflect.TypeOf(value).Kind() == reflect.Slice{//For plist key "data". It is converted as []uint8.
+		return fmt.Sprintf("%s",reflect.TypeOf(value))
 	}
+
 	v := reflect.TypeOf(value).Name()
 	if v == "float64" && convertFloats {
 		v = disambiguateFloatInt(value)
 	}
+
 	return v
 }
 

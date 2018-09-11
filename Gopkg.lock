@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/groob/plist"
+  packages = ["."]
+  revision = "dd56909aee38bb3860460e3e1ca8a4270c04ce15"
+
+[[projects]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -10,6 +16,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c39e9119cc91080f9178c39214d6ca06156205351dec2523319554ee3669537e"
+  inputs-digest = "c9cea6c5e6f595256991c24812c76ca24a2585583e61b8749e9265a6466579d9"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -100,6 +100,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	xj "github.com/basgys/goxml2json"
 	"go/format"
 	"io"
 	"math"
@@ -109,8 +110,8 @@ import (
 	"strings"
 	"unicode"
 
-	"gopkg.in/yaml.v2"
 	"github.com/groob/plist"
+	"gopkg.in/yaml.v2"
 )
 
 var ForceFloats bool
@@ -201,6 +202,13 @@ func ParsePlist(input io.Reader) (interface{}, error) {
 	return result, nil
 }
 
+func ParseXml(input io.Reader) (interface{}, error) {
+	json, err := xj.Convert(input)
+	if err != nil {
+		return nil, err
+	}
+	return ParseJson(strings.NewReader(json.String()))
+}
 
 func readFile(input io.Reader) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
@@ -224,7 +232,6 @@ func Generate(input io.Reader, parser Parser, structName, pkgName string, tags [
 	if err != nil {
 		return nil, err
 	}
-
 	switch iresult := iresult.(type) {
 	case map[interface{}]interface{}:
 		result = convertKeysToStrings(iresult)
@@ -501,8 +508,8 @@ func typeForValue(value interface{}, structName string, tags []string, subStruct
 		return generateTypes(object, structName, tags, 0, subStructMap, convertFloats) + "}"
 	} else if reflect.TypeOf(value) == nil {
 		return "interface{}"
-	}else if reflect.TypeOf(value).Kind() == reflect.Slice{//For plist key "data". It is converted as []uint8.
-		return fmt.Sprintf("%s",reflect.TypeOf(value))
+	} else if reflect.TypeOf(value).Kind() == reflect.Slice { //For plist key "data". It is converted as []uint8.
+		return fmt.Sprintf("%s", reflect.TypeOf(value))
 	}
 
 	v := reflect.TypeOf(value).Name()

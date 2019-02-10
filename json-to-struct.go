@@ -98,20 +98,21 @@ package gojson
 
 import (
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	xj "github.com/basgys/goxml2json"
+	"github.com/groob/plist"
 	"go/format"
+	"gopkg.in/yaml.v2"
 	"io"
 	"math"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
-
-	"github.com/groob/plist"
-	"gopkg.in/yaml.v2"
 )
 
 var ForceFloats bool
@@ -208,6 +209,155 @@ func ParseXml(input io.Reader) (interface{}, error) {
 		return nil, err
 	}
 	return ParseJson(strings.NewReader(json.String()))
+}
+
+func ParseCsv(input io.Reader) (interface{}, error) {
+	type fieldtype struct {
+		Name   string
+		Bool   bool
+		Float  bool
+		Int    bool
+		UInt   bool
+		String bool
+	}
+	fieldTypes := func(binput io.Reader) ([]*fieldtype, error) {
+		reader := csv.NewReader(binput)
+		var fieldtypes []*fieldtype
+		isHeaderRow := true
+		for {
+			record, err := reader.Read()
+			if err != nil {
+				if err == io.EOF {
+					break
+				} else {
+					return nil, err
+				}
+			}
+			if !isHeaderRow {
+				for i, f := range fieldtypes {
+					s := record[i]
+					if strings.TrimSpace(s) != "" {
+						if _, e := strconv.ParseBool(s); e == nil {
+							if !f.Bool {
+								f.Bool = true
+							}
+						} else if _, e := strconv.ParseFloat(s, 64); e == nil && strings.Contains(s, ".") {
+							if !f.Float {
+								f.Float = true
+							}
+						} else if _, e := strconv.ParseInt(s, 10, 64); e == nil && strings.Contains(s, "-") {
+							if !f.Int {
+								f.Int = true
+							}
+						} else if _, e := strconv.ParseUint(s, 10, 64); e == nil {
+							if !f.UInt {
+								f.UInt = true
+							}
+						} else {
+							if !f.String {
+								f.String = true
+							}
+						}
+					}
+				}
+
+			} else {
+				isHeaderRow = false
+				for _, v := range record {
+					filed := &fieldtype{
+						Name:   v,
+						Bool:   false,
+						Float:  false,
+						Int:    false,
+						UInt:   false,
+						String: false,
+					}
+					fieldtypes = append(fieldtypes, filed)
+				}
+			}
+		}
+
+		for _, v := range fieldtypes {
+			if !v.Bool && !v.Float && !v.Int && !v.UInt && !v.String {
+				fmt.Fprintf(os.Stderr, "\033[33mHmm, All '%s' values are blank... so treat it as a string.\033[0m\n", v.Name)
+				v.String = true
+			}
+		}
+
+		return fieldtypes, nil
+	}
+
+	interfaces := func(binput io.Reader, fts []*fieldtype) ([]interface{}, error) {
+
+		var result []interface{}
+		reader := csv.NewReader(binput)
+		isHeaderRow := true
+		for {
+			record, err := reader.Read()
+			if err != nil {
+				if err == io.EOF {
+					break
+				} else {
+					return nil, err
+				}
+			}
+			if !isHeaderRow {
+				var rmap = map[string]interface{}{}
+				for i, f := range fts {
+					s := record[i]
+					if f.String {
+						rmap[f.Name] = s
+					} else if f.Bool && !f.Int && !f.UInt && !f.Float {
+						if r, e := strconv.ParseBool(s); e == nil {
+							rmap[f.Name] = r
+						} else {
+							return nil, e
+						}
+					} else if f.Float {
+						if r, e := strconv.ParseFloat(s, 64); e == nil {
+							rmap[f.Name] = r
+						} else {
+							return nil, e
+						}
+					} else if f.Int {
+						if r, e := strconv.ParseInt(s, 10, 64); e == nil {
+							rmap[f.Name] = r
+						} else {
+							return nil, e
+						}
+					} else if f.UInt {
+						if r, e := strconv.ParseUint(s, 10, 64); e == nil {
+							rmap[f.Name] = r
+						} else {
+							return nil, e
+						}
+					} else {
+						return nil, fmt.Errorf("unknown type %s: %s", f.Name, s)
+					}
+				}
+				result = append(result, rmap)
+			} else {
+				isHeaderRow = false
+			}
+		}
+
+		return result, nil
+	}
+
+	b, e := readFile(input)
+	if e != nil {
+		return nil, e
+	}
+	t, e := fieldTypes(bytes.NewReader(b))
+	if e != nil {
+		return nil, e
+	}
+	// for i, v := range t {
+	// 	j, _ := json.MarshalIndent(v, "", "  ")
+	// 	fmt.Println(i, string(j))
+	// }
+
+	return interfaces(bytes.NewReader(b), t)
 }
 
 func readFile(input io.Reader) ([]byte, error) {

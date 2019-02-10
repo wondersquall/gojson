@@ -9,9 +9,27 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/gojp/kana"
+  packages = ["."]
+  revision = "6edbc04c5042be5f41cc1bd59cdcdc933a66424b"
+
+[[projects]]
+  branch = "master"
   name = "github.com/groob/plist"
   packages = ["."]
   revision = "dd56909aee38bb3860460e3e1ca8a4270c04ce15"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/ikawaha/kagome.ipadic"
+  packages = [
+    "internal/da",
+    "internal/dic",
+    "internal/dic/data",
+    "internal/lattice",
+    "tokenizer"
+  ]
+  revision = "dd3ae0544a806f4d39df5a70f46494adb3fbbfa2"
 
 [[projects]]
   branch = "master"
@@ -56,6 +74,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fd3fdf3d2811088ff6d474c121288a0cbadc99057c8bdaf02874506844960c3a"
+  inputs-digest = "8262fa6a2487ea2f70f228b660d11289d685684635aa62b965719925e21dbb0d"
   solver-name = "gps-cdcl"
   solver-version = 1

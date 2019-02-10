@@ -102,13 +102,16 @@ import (
 	"encoding/json"
 	"fmt"
 	xj "github.com/basgys/goxml2json"
+	"github.com/gojp/kana"
 	"github.com/groob/plist"
+	"github.com/ikawaha/kagome.ipadic/tokenizer"
 	"go/format"
 	"gopkg.in/yaml.v2"
 	"io"
 	"math"
 	"os"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -529,6 +532,39 @@ func generateTypes(obj map[string]interface{}, structName string, tags []string,
 // 	FmtFieldName("foo_id")
 // Output: FooID
 func FmtFieldName(s string) string {
+	//Japanese fieldName support >>>
+
+	// It seems that cjk characters can be used both as go-variables and as tags.
+	// However, they will be private variables of the structure. Because, The first letter is not an upper case!
+	// If the initial letter is alphabet it does not seem to matter if it contains Japanese.
+
+	t := tokenizer.New()
+	tokens := t.Tokenize(s)
+	var fs []string
+	if len(tokens) > 2 {
+		fs = tokens[1].Features()
+	}
+	// Check first letter.
+	if len(tokens) > 2 && fs[len(fs)-1] != "*" {
+		jReading := bytes.NewBuffer([]byte{})
+		// Get reading of the character
+		for _, token := range tokens {
+			if token.Class != tokenizer.DUMMY {
+				fs := token.Features()
+				jReading.WriteString(fs[len(fs)-1] + "_")
+			}
+		}
+		// Convert reading(kana) to alphabet(roma-ji)
+		r := kana.KanaToRomaji(jReading.String())
+		r = strings.Replace(r, "-", "", -1)
+
+		var re = regexp.MustCompile("[\\[\\]\\(\\)\\-（）、。〃〄々〆〇〈〉《》「」『』【】〒〓〔〕〖〗〘〙〚〛〜〝〞〟 〠〡〢〣〤〥〦〧〨〩〪〭〮〯〫〬〰〱〲〳〴〵〶〷〸〹〺〻〼〽〾〿]")
+		s = re.ReplaceAllString(r, "_")
+		// fmt.Fprintf(os.Stderr, "\033[33m%s : %s\033[0m\n", jReading.String(), s)
+	}
+
+	//<<< Japanese fieldName support
+
 	runes := []rune(s)
 	for len(runes) > 0 && !unicode.IsLetter(runes[0]) && !unicode.IsDigit(runes[0]) {
 		runes = runes[1:]
